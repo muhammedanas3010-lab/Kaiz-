@@ -1,102 +1,13 @@
-├── index.html
-├── package.json
-├── tailwind.config.js
-├── postcss.config.js
-└── src/
-    ├── main.jsx
-    ├── index.css
-    └── App.jsx
-{
-  "name": "bebi-ledi-fashion-app",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "lucide-react": "^0.263.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.3",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.27",
-    "tailwindcss": "^3.3.3",
-    "vite": "^4.4.5"
-  }
-}
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        darkBg: '#032B25',
-        cardBg: '#083C35',
-        limeAccent: '#C0EB6A',
-      }
-    },
-  },
-  plugins: [],
-}
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BEBI & LEDI Business Manager</title>
-  </head>
-  <body class="bg-[#032B25]">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  background-color: #032B25;
-  color: #ffffff;
-  font-family: system-ui, -apple-system, sans-serif;
-}
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
 import React, { useState, useEffect } from 'react';
 import { 
-  Home, ShoppingBag, Users, BarChart2, PlusCircle, 
-  MessageCircle, CheckCircle, Image as ImageIcon, Trash2, Edit, Calendar, Info, X
+  Home, ShoppingBag, Users, BarChart2,
+  MessageCircle, Trash2, Edit, X
 } from 'lucide-react';
 
-export default function BusinessApp() {
+export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [platformFilter, setPlatformFilter] = useState('ALL'); // ALL, BEBI, LEDI
+  const [platformFilter, setPlatformFilter] = useState('ALL');
   
-  // LocalStorage Sync (Persistent Storage across devices)
   const [employees, setEmployees] = useState(() => {
     const saved = localStorage.getItem('app_employees');
     return saved ? JSON.parse(saved) : [
@@ -118,7 +29,6 @@ export default function BusinessApp() {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
 
-  // Date Filters for Analytics
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -134,7 +44,6 @@ export default function BusinessApp() {
     localStorage.setItem('app_storeItems', JSON.stringify(storeItems));
   }, [storeItems]);
 
-  // Form States
   const [newOrder, setNewOrder] = useState({
     platform: 'BEBI', customerName: '', whatsapp: '', deliveryDate: '',
     itemCode: '', price: '', advance: '', materialCost: '',
@@ -144,7 +53,6 @@ export default function BusinessApp() {
   const [newEmp, setNewEmp] = useState({ name: '', whatsapp: '' });
   const [newItem, setNewItem] = useState({ image: '', price: '', code: '' });
 
-  // Order Breakdown Logic
   const calculateOrderBreakdown = (price, mat, del, stitch) => {
     const p = parseFloat(price) || 0;
     const m = parseFloat(mat) || 0;
@@ -168,7 +76,6 @@ export default function BusinessApp() {
     return { netBalance, ownerShare, profit };
   };
 
-  // Add or Update Order
   const handleSaveOrder = (e) => {
     e.preventDefault();
     if (editingOrder) {
@@ -197,7 +104,6 @@ export default function BusinessApp() {
     setOrders(orders.map(o => o.id === id ? { ...o, status: 'COMPLETED' } : o));
   };
 
-  // Filters
   const filteredOrders = orders.filter(o => {
     const matchesPlatform = platformFilter === 'ALL' || o.platform === platformFilter;
     let matchesDate = true;
@@ -210,12 +116,10 @@ export default function BusinessApp() {
   const pendingOrders = filteredOrders.filter(o => o.status === 'PENDING');
   const completedOrders = filteredOrders.filter(o => o.status === 'COMPLETED');
 
-  // Next 2 Deliveries by Date
   const upcomingDeliveries = [...pendingOrders]
     .sort((a, b) => new Date(a.deliveryDate) - new Date(b.deliveryDate))
     .slice(0, 2);
 
-  // Financial Metrics
   const totalRevenue = filteredOrders.reduce((acc, o) => acc + (parseFloat(o.price) || 0), 0);
   const totalExpenses = filteredOrders.reduce((acc, o) => 
     acc + (parseFloat(o.materialCost) || 0) + (parseFloat(o.deliveryCharge) || 0) + (parseFloat(o.stitchingCost) || 0), 0);
@@ -262,7 +166,6 @@ export default function BusinessApp() {
         {/* 1. DASHBOARD TAB */}
         {activeTab === 'dashboard' && (
           <div className="space-y-4">
-            {/* Wallet Balance Card */}
             <div className="bg-[#083C35] p-5 rounded-2xl border border-[#0d5249] shadow-lg">
               <span className="text-xs text-gray-300">Total Revenue ({platformFilter})</span>
               <div className="text-3xl font-extrabold text-[#C0EB6A] my-1">₹{totalRevenue.toLocaleString()}</div>
@@ -279,7 +182,6 @@ export default function BusinessApp() {
               </div>
             </div>
 
-            {/* Status Metrics */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#083C35] p-4 rounded-xl border border-gray-800">
                 <span className="text-xs text-gray-400">Pending Orders</span>
@@ -291,7 +193,6 @@ export default function BusinessApp() {
               </div>
             </div>
 
-            {/* Upcoming Deliveries Widget */}
             <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
               <h3 className="text-xs font-bold text-[#C0EB6A] uppercase tracking-wider">Next 2 Deliveries</h3>
               {upcomingDeliveries.length === 0 ? (
@@ -316,7 +217,7 @@ export default function BusinessApp() {
           </div>
         )}
 
-        {/* 2. ORDERS & ADD ORDER TAB */}
+        {/* 2. ORDERS TAB */}
         {activeTab === 'orders' && (
           <div className="space-y-4">
             <form onSubmit={handleSaveOrder} className="bg-[#083C35] p-4 rounded-xl space-y-3 text-xs border border-gray-800">
@@ -407,7 +308,6 @@ export default function BusinessApp() {
               </button>
             </form>
 
-            {/* Pending Orders List */}
             <div className="space-y-3">
               <h3 className="font-bold text-sm text-[#C0EB6A]">Active Orders</h3>
               {pendingOrders.map(o => {
@@ -432,7 +332,7 @@ export default function BusinessApp() {
 
                     {pendingBal > 0 && (
                       <p className="text-xs text-red-300 font-semibold bg-red-950/50 p-1.5 rounded border border-red-900">
-                        ⚠️ Pending Balance: ₹{pendingBal}
+                        ⚠️️ Pending Balance: ₹{pendingBal}
                       </p>
                     )}
 
@@ -454,12 +354,11 @@ export default function BusinessApp() {
           </div>
         )}
 
-        {/* 3. CUSTOMER HISTORY & COMPLETED ORDERS */}
+        {/* 3. HISTORY TAB */}
         {activeTab === 'customers' && (
           <div className="space-y-3">
             <h3 className="font-bold text-sm text-[#C0EB6A]">Customer Order History</h3>
             {completedOrders.map(o => {
-              const { ownerShare, profit } = calculateOrderBreakdown(o.price, o.materialCost, o.deliveryCharge, o.stitchingCost);
               const custOrders = completedOrders.filter(co => co.whatsapp === o.whatsapp);
               const custTotalRev = custOrders.reduce((acc, c) => acc + parseFloat(c.price), 0);
 
@@ -532,7 +431,7 @@ export default function BusinessApp() {
           </div>
         )}
 
-        {/* 5. ITEM STORE (MAX 10MB IMAGE) */}
+        {/* 5. STORE TAB */}
         {activeTab === 'store' && (
           <div className="space-y-4">
             <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
@@ -589,7 +488,7 @@ export default function BusinessApp() {
           </div>
         )}
 
-        {/* 6. ANALYTICS & CALCULATION BOARD */}
+        {/* 6. ANALYTICS TAB */}
         {activeTab === 'analytics' && (
           <div className="space-y-4">
             <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
@@ -634,7 +533,7 @@ export default function BusinessApp() {
 
       </div>
 
-      {/* Detail Modal */}
+      {/* Modal */}
       {selectedOrderDetails && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <div className="bg-[#083C35] p-5 rounded-2xl max-w-sm w-full space-y-3 relative border border-gray-700 text-xs">
@@ -657,7 +556,7 @@ export default function BusinessApp() {
         </div>
       )}
 
-      {/* Bottom Navigation */}
+      {/* Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#083C35] border-t border-[#0d5249] p-3 flex justify-around items-center max-w-md mx-auto">
         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center text-[10px] ${activeTab === 'dashboard' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
           <Home size={18} /> Dashboard
@@ -668,9 +567,6 @@ export default function BusinessApp() {
         <button onClick={() => setActiveTab('customers')} className={`flex flex-col items-center text-[10px] ${activeTab === 'customers' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
           <Users size={18} /> History
         </button>
-        <button onClick={() => setActiveTab('store')} className={`flex flex-col items-center text-[10px] ${activeTab === 'store' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
-          <ImageIcon size={18} /> Store
-        </button>
         <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center text-[10px] ${activeTab === 'analytics' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
           <BarChart2 size={18} /> Analytics
         </button>
@@ -678,3 +574,4 @@ export default function BusinessApp() {
     </div>
   );
 }
+
