@@ -1,0 +1,680 @@
+├── index.html
+├── package.json
+├── tailwind.config.js
+├── postcss.config.js
+└── src/
+    ├── main.jsx
+    ├── index.css
+    └── App.jsx
+{
+  "name": "bebi-ledi-fashion-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^0.263.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3",
+    "vite": "^4.4.5"
+  }
+}
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        darkBg: '#032B25',
+        cardBg: '#083C35',
+        limeAccent: '#C0EB6A',
+      }
+    },
+  },
+  plugins: [],
+}
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BEBI & LEDI Business Manager</title>
+  </head>
+  <body class="bg-[#032B25]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #032B25;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+import React, { useState, useEffect } from 'react';
+import { 
+  Home, ShoppingBag, Users, BarChart2, PlusCircle, 
+  MessageCircle, CheckCircle, Image as ImageIcon, Trash2, Edit, Calendar, Info, X
+} from 'lucide-react';
+
+export default function BusinessApp() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [platformFilter, setPlatformFilter] = useState('ALL'); // ALL, BEBI, LEDI
+  
+  // LocalStorage Sync (Persistent Storage across devices)
+  const [employees, setEmployees] = useState(() => {
+    const saved = localStorage.getItem('app_employees');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, name: 'Anil Kumar', whatsapp: '919876543210' },
+      { id: 2, name: 'Sumi M', whatsapp: '919876543211' }
+    ];
+  });
+
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('app_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [storeItems, setStoreItems] = useState(() => {
+    const saved = localStorage.getItem('app_storeItems');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [editingOrder, setEditingOrder] = useState(null);
+
+  // Date Filters for Analytics
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('app_employees', JSON.stringify(employees));
+  }, [employees]);
+
+  useEffect(() => {
+    localStorage.setItem('app_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    localStorage.setItem('app_storeItems', JSON.stringify(storeItems));
+  }, [storeItems]);
+
+  // Form States
+  const [newOrder, setNewOrder] = useState({
+    platform: 'BEBI', customerName: '', whatsapp: '', deliveryDate: '',
+    itemCode: '', price: '', advance: '', materialCost: '',
+    deliveryCharge: '', tailor: '', stitchingCost: ''
+  });
+
+  const [newEmp, setNewEmp] = useState({ name: '', whatsapp: '' });
+  const [newItem, setNewItem] = useState({ image: '', price: '', code: '' });
+
+  // Order Breakdown Logic
+  const calculateOrderBreakdown = (price, mat, del, stitch) => {
+    const p = parseFloat(price) || 0;
+    const m = parseFloat(mat) || 0;
+    const d = parseFloat(del) || 0;
+    const s = parseFloat(stitch) || 0;
+
+    const netBalance = p - (m + d + s);
+    let ownerShare = 0;
+    let profit = 0;
+
+    if (netBalance > 0) {
+      if (netBalance <= 300) {
+        ownerShare = netBalance;
+        profit = 0;
+      } else {
+        ownerShare = 300;
+        profit = netBalance - 300;
+      }
+    }
+
+    return { netBalance, ownerShare, profit };
+  };
+
+  // Add or Update Order
+  const handleSaveOrder = (e) => {
+    e.preventDefault();
+    if (editingOrder) {
+      setOrders(orders.map(o => o.id === editingOrder.id ? { ...newOrder, id: editingOrder.id, status: editingOrder.status } : o));
+      setEditingOrder(null);
+    } else {
+      const orderData = { ...newOrder, id: 'ORD' + Date.now(), status: 'PENDING' };
+      setOrders([...orders, orderData]);
+    }
+    setNewOrder({
+      platform: 'BEBI', customerName: '', whatsapp: '', deliveryDate: '',
+      itemCode: '', price: '', advance: '', materialCost: '',
+      deliveryCharge: '', tailor: '', stitchingCost: ''
+    });
+    setActiveTab('orders');
+  };
+
+  const deleteOrder = (id) => {
+    if (confirm("Are you sure you want to delete this order?")) {
+      setOrders(orders.filter(o => o.id !== id));
+      if (selectedOrderDetails?.id === id) setSelectedOrderDetails(null);
+    }
+  };
+
+  const markDelivered = (id) => {
+    setOrders(orders.map(o => o.id === id ? { ...o, status: 'COMPLETED' } : o));
+  };
+
+  // Filters
+  const filteredOrders = orders.filter(o => {
+    const matchesPlatform = platformFilter === 'ALL' || o.platform === platformFilter;
+    let matchesDate = true;
+    if (startDate && endDate) {
+      matchesDate = o.deliveryDate >= startDate && o.deliveryDate <= endDate;
+    }
+    return matchesPlatform && matchesDate;
+  });
+
+  const pendingOrders = filteredOrders.filter(o => o.status === 'PENDING');
+  const completedOrders = filteredOrders.filter(o => o.status === 'COMPLETED');
+
+  // Next 2 Deliveries by Date
+  const upcomingDeliveries = [...pendingOrders]
+    .sort((a, b) => new Date(a.deliveryDate) - new Date(b.deliveryDate))
+    .slice(0, 2);
+
+  // Financial Metrics
+  const totalRevenue = filteredOrders.reduce((acc, o) => acc + (parseFloat(o.price) || 0), 0);
+  const totalExpenses = filteredOrders.reduce((acc, o) => 
+    acc + (parseFloat(o.materialCost) || 0) + (parseFloat(o.deliveryCharge) || 0) + (parseFloat(o.stitchingCost) || 0), 0);
+
+  const totalOwnerShare = filteredOrders.reduce((acc, o) => {
+    const { ownerShare } = calculateOrderBreakdown(o.price, o.materialCost, o.deliveryCharge, o.stitchingCost);
+    return acc + ownerShare;
+  }, 0);
+
+  const totalProfit = filteredOrders.reduce((acc, o) => {
+    const { profit } = calculateOrderBreakdown(o.price, o.materialCost, o.deliveryCharge, o.stitchingCost);
+    return acc + profit;
+  }, 0);
+
+  const openWhatsApp = (phone, msg = "") => {
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  return (
+    <div className="bg-[#032B25] min-h-screen text-white font-sans pb-24">
+      {/* Top Header */}
+      <div className="p-4 bg-[#083C35] flex justify-between items-center border-b border-[#0d5249] sticky top-0 z-10">
+        <div>
+          <h1 className="text-[10px] text-gray-300 tracking-widest uppercase">Business Management</h1>
+          <h2 className="text-lg font-bold text-[#C0EB6A]">BEBI & LEDI App</h2>
+        </div>
+        <div className="flex gap-1 bg-[#032B25] p-1 rounded-full border border-gray-700">
+          {['ALL', 'BEBI', 'LEDI'].map(p => (
+            <button 
+              key={p}
+              onClick={() => setPlatformFilter(p)}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                platformFilter === p ? 'bg-[#C0EB6A] text-[#032B25]' : 'text-gray-300'
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-4 max-w-md mx-auto space-y-5">
+
+        {/* 1. DASHBOARD TAB */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-4">
+            {/* Wallet Balance Card */}
+            <div className="bg-[#083C35] p-5 rounded-2xl border border-[#0d5249] shadow-lg">
+              <span className="text-xs text-gray-300">Total Revenue ({platformFilter})</span>
+              <div className="text-3xl font-extrabold text-[#C0EB6A] my-1">₹{totalRevenue.toLocaleString()}</div>
+              
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#0d5249]">
+                <div>
+                  <span className="text-[10px] text-gray-400">Owner Wallet (₹300 Cut)</span>
+                  <p className="text-base font-bold text-white">₹{totalOwnerShare}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400">Total Profit Margin</span>
+                  <p className="text-base font-bold text-lime-400">₹{totalProfit}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#083C35] p-4 rounded-xl border border-gray-800">
+                <span className="text-xs text-gray-400">Pending Orders</span>
+                <p className="text-2xl font-bold text-amber-400">{pendingOrders.length}</p>
+              </div>
+              <div className="bg-[#083C35] p-4 rounded-xl border border-gray-800">
+                <span className="text-xs text-gray-400">Completed Orders</span>
+                <p className="text-2xl font-bold text-emerald-400">{completedOrders.length}</p>
+              </div>
+            </div>
+
+            {/* Upcoming Deliveries Widget */}
+            <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
+              <h3 className="text-xs font-bold text-[#C0EB6A] uppercase tracking-wider">Next 2 Deliveries</h3>
+              {upcomingDeliveries.length === 0 ? (
+                <p className="text-xs text-gray-400">No active pending deliveries.</p>
+              ) : (
+                upcomingDeliveries.map(item => (
+                  <div key={item.id} className="bg-[#032B25] p-3 rounded-lg flex justify-between items-center border border-gray-700">
+                    <div onClick={() => setSelectedOrderDetails(item)} className="cursor-pointer">
+                      <p className="font-bold text-sm text-white">{item.customerName}</p>
+                      <p className="text-xs text-gray-400">Date: <span className="text-yellow-300 font-semibold">{item.deliveryDate}</span> ({item.platform})</p>
+                    </div>
+                    <button 
+                      onClick={() => openWhatsApp(item.whatsapp, `Hello ${item.customerName}, regarding your order ${item.itemCode}`)}
+                      className="bg-green-600 p-2 rounded-full text-white"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 2. ORDERS & ADD ORDER TAB */}
+        {activeTab === 'orders' && (
+          <div className="space-y-4">
+            <form onSubmit={handleSaveOrder} className="bg-[#083C35] p-4 rounded-xl space-y-3 text-xs border border-gray-800">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">{editingOrder ? "Edit Order Details" : "Create New Order"}</h3>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <select 
+                  value={newOrder.platform} 
+                  onChange={e => setNewOrder({...newOrder, platform: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                >
+                  <option value="BEBI">BEBI</option>
+                  <option value="LEDI">LEDI</option>
+                </select>
+                <input 
+                  type="text" placeholder="Customer Name" required
+                  value={newOrder.customerName} onChange={e => setNewOrder({...newOrder, customerName: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input 
+                  type="text" placeholder="WhatsApp Number" required
+                  value={newOrder.whatsapp} onChange={e => setNewOrder({...newOrder, whatsapp: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+                <input 
+                  type="date" required
+                  value={newOrder.deliveryDate} onChange={e => setNewOrder({...newOrder, deliveryDate: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <input 
+                  type="text" placeholder="Item Code" required
+                  value={newOrder.itemCode} onChange={e => setNewOrder({...newOrder, itemCode: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+                <input 
+                  type="number" placeholder="Total Price" required
+                  value={newOrder.price} onChange={e => setNewOrder({...newOrder, price: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+                <div>
+                  <input 
+                    type="number" placeholder="Advance" required
+                    value={newOrder.advance} onChange={e => setNewOrder({...newOrder, advance: e.target.value})}
+                    className="bg-[#032B25] p-2 rounded border border-gray-700 text-white w-full"
+                  />
+                  {newOrder.price && newOrder.advance && (parseFloat(newOrder.price) - parseFloat(newOrder.advance) > 0) && (
+                    <span className="text-[9px] text-red-400 block mt-0.5">Bal: ₹{parseFloat(newOrder.price) - parseFloat(newOrder.advance)}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <input 
+                  type="number" placeholder="Material Cost" 
+                  value={newOrder.materialCost} onChange={e => setNewOrder({...newOrder, materialCost: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+                <input 
+                  type="number" placeholder="Delivery Chg" 
+                  value={newOrder.deliveryCharge} onChange={e => setNewOrder({...newOrder, deliveryCharge: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+                <input 
+                  type="number" placeholder="Stitching Fee" 
+                  value={newOrder.stitchingCost} onChange={e => setNewOrder({...newOrder, stitchingCost: e.target.value})}
+                  className="bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                />
+              </div>
+
+              <select 
+                value={newOrder.tailor} 
+                onChange={e => setNewOrder({...newOrder, tailor: e.target.value})}
+                className="w-full bg-[#032B25] p-2 rounded border border-gray-700 text-white"
+                required
+              >
+                <option value="">Select Stitching Employee</option>
+                {employees.map(emp => <option key={emp.id} value={emp.name}>{emp.name}</option>)}
+              </select>
+
+              <button type="submit" className="w-full bg-[#C0EB6A] text-[#032B25] font-bold py-2 rounded-lg">
+                {editingOrder ? "Update Order" : "Save Order"}
+              </button>
+            </form>
+
+            {/* Pending Orders List */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">Active Orders</h3>
+              {pendingOrders.map(o => {
+                const pendingBal = o.price - o.advance;
+                return (
+                  <div key={o.id} className="bg-[#083C35] p-4 rounded-xl space-y-2 border border-gray-800">
+                    <div className="flex justify-between items-start">
+                      <div onClick={() => setSelectedOrderDetails(o)} className="cursor-pointer">
+                        <span className="text-[10px] bg-[#032B25] px-2 py-0.5 rounded text-[#C0EB6A] font-bold">{o.platform}</span>
+                        <h4 className="font-bold text-base mt-1">{o.customerName}</h4>
+                        <p className="text-xs text-gray-300">Code: {o.itemCode} | Delivery: {o.deliveryDate}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setEditingOrder(o); setNewOrder(o); }} className="text-gray-300 p-1">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => deleteOrder(o.id)} className="text-red-400 p-1">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {pendingBal > 0 && (
+                      <p className="text-xs text-red-300 font-semibold bg-red-950/50 p-1.5 rounded border border-red-900">
+                        ⚠️ Pending Balance: ₹{pendingBal}
+                      </p>
+                    )}
+
+                    <div className="flex justify-between items-center pt-2 text-xs border-t border-gray-700">
+                      <span>Tailor: <b>{o.tailor}</b></span>
+                      <div className="flex gap-2">
+                        <button onClick={() => markDelivered(o.id)} className="bg-emerald-600 px-2 py-1 rounded font-bold text-[10px]">
+                          Mark Delivered
+                        </button>
+                        <button onClick={() => openWhatsApp(o.whatsapp)} className="text-green-400">
+                          <MessageCircle size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 3. CUSTOMER HISTORY & COMPLETED ORDERS */}
+        {activeTab === 'customers' && (
+          <div className="space-y-3">
+            <h3 className="font-bold text-sm text-[#C0EB6A]">Customer Order History</h3>
+            {completedOrders.map(o => {
+              const { ownerShare, profit } = calculateOrderBreakdown(o.price, o.materialCost, o.deliveryCharge, o.stitchingCost);
+              const custOrders = completedOrders.filter(co => co.whatsapp === o.whatsapp);
+              const custTotalRev = custOrders.reduce((acc, c) => acc + parseFloat(c.price), 0);
+
+              return (
+                <div key={o.id} className="bg-[#083C35] p-4 rounded-xl space-y-2 border border-gray-800">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold">{o.customerName}</h4>
+                      <p className="text-xs text-gray-400">WhatsApp: {o.whatsapp}</p>
+                    </div>
+                    <button onClick={() => openWhatsApp(o.whatsapp)} className="text-green-400">
+                      <MessageCircle size={16} />
+                    </button>
+                  </div>
+
+                  <div className="bg-[#032B25] p-2 rounded text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span>Total Customer Orders:</span>
+                      <span className="font-bold">{custOrders.length}</span>
+                    </div>
+                    <div className="flex justify-between text-lime-400">
+                      <span>Total Revenue From Customer:</span>
+                      <span className="font-bold">₹{custTotalRev}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 4. EMPLOYEES TAB */}
+        {activeTab === 'employees' && (
+          <div className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              setEmployees([...employees, { id: Date.now(), ...newEmp }]);
+              setNewEmp({ name: '', whatsapp: '' });
+            }} className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">Add Employee / Tailor</h3>
+              <input 
+                type="text" placeholder="Employee Name" required value={newEmp.name}
+                onChange={e => setNewEmp({...newEmp, name: e.target.value})}
+                className="w-full bg-[#032B25] p-2 rounded border border-gray-700 text-xs text-white"
+              />
+              <input 
+                type="text" placeholder="WhatsApp Number" required value={newEmp.whatsapp}
+                onChange={e => setNewEmp({...newEmp, whatsapp: e.target.value})}
+                className="w-full bg-[#032B25] p-2 rounded border border-gray-700 text-xs text-white"
+              />
+              <button type="submit" className="w-full bg-[#C0EB6A] text-[#032B25] font-bold py-2 rounded text-xs">
+                Save Employee
+              </button>
+            </form>
+
+            <div className="space-y-2">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">Tailors List</h3>
+              {employees.map(e => (
+                <div key={e.id} className="bg-[#083C35] p-3 rounded-lg flex justify-between items-center border border-gray-800">
+                  <div>
+                    <p className="font-bold text-sm">{e.name}</p>
+                    <p className="text-xs text-gray-400">{e.whatsapp}</p>
+                  </div>
+                  <button onClick={() => openWhatsApp(e.whatsapp)} className="text-green-400">
+                    <MessageCircle size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 5. ITEM STORE (MAX 10MB IMAGE) */}
+        {activeTab === 'store' && (
+          <div className="space-y-4">
+            <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">Upload Design Item</h3>
+              <input 
+                type="file" accept="image/*" 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file && file.size <= 10 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setNewItem({...newItem, image: reader.result});
+                    reader.readAsDataURL(file);
+                  } else {
+                    alert('Maximum file size allowed is 10MB!');
+                  }
+                }}
+                className="text-xs text-gray-400 w-full"
+              />
+              <input 
+                type="text" placeholder="Item Code" 
+                value={newItem.code} onChange={e => setNewItem({...newItem, code: e.target.value})}
+                className="w-full bg-[#032B25] p-2 rounded text-xs border border-gray-700 text-white"
+              />
+              <input 
+                type="number" placeholder="Item Price" 
+                value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})}
+                className="w-full bg-[#032B25] p-2 rounded text-xs border border-gray-700 text-white"
+              />
+              <button onClick={() => {
+                if(newItem.image && newItem.price) {
+                  setStoreItems([...storeItems, { id: Date.now(), ...newItem }]);
+                  setNewItem({ image: '', price: '', code: '' });
+                }
+              }} className="w-full bg-[#C0EB6A] text-[#032B25] font-bold py-2 rounded text-xs">
+                Save to Item Store
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {storeItems.map(item => (
+                <div key={item.id} className="bg-[#083C35] p-2 rounded-xl space-y-2 border border-gray-800 relative">
+                  <img src={item.image} alt="Store Item" className="w-full h-32 object-cover rounded-lg" />
+                  <p className="font-bold text-xs">{item.code}</p>
+                  <p className="text-lime-400 font-bold text-xs">₹{item.price}</p>
+                  <button 
+                    onClick={() => setStoreItems(storeItems.filter(i => i.id !== item.id))} 
+                    className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full text-xs"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 6. ANALYTICS & CALCULATION BOARD */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-4">
+            <div className="bg-[#083C35] p-4 rounded-xl space-y-3 border border-gray-800">
+              <h3 className="font-bold text-sm text-[#C0EB6A]">Date Analytics & Calculation Board</h3>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="text-[10px] text-gray-400">From Date</label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-[#032B25] p-1.5 rounded border border-gray-700 text-white"/>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-400">To Date</label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-[#032B25] p-1.5 rounded border border-gray-700 text-white"/>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs pt-2">
+                <div className="flex justify-between p-2 bg-[#032B25] rounded">
+                  <span>Gross Revenue:</span>
+                  <span className="font-bold">₹{totalRevenue}</span>
+                </div>
+                <div className="flex justify-between p-2 bg-[#032B25] rounded text-red-300">
+                  <span>Total Expenses:</span>
+                  <span className="font-bold">- ₹{totalExpenses}</span>
+                </div>
+                <div className="flex justify-between p-2 bg-[#032B25] rounded text-yellow-300">
+                  <span>Owner Wallet (Cut):</span>
+                  <span className="font-bold">₹{totalOwnerShare}</span>
+                </div>
+                <div className="flex justify-between p-2 bg-[#032B25] rounded text-lime-400 font-bold">
+                  <span>Net Profit:</span>
+                  <span>₹{totalProfit}</span>
+                </div>
+                <div className="flex justify-between p-2 bg-[#032B25] rounded text-gray-300">
+                  <span>Profit Margin %:</span>
+                  <span>{totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : 0}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Detail Modal */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#083C35] p-5 rounded-2xl max-w-sm w-full space-y-3 relative border border-gray-700 text-xs">
+            <button onClick={() => setSelectedOrderDetails(null)} className="absolute top-3 right-3 text-gray-400">
+              <X size={18} />
+            </button>
+            <h3 className="font-bold text-base text-[#C0EB6A]">Order Details ({selectedOrderDetails.platform})</h3>
+            <div className="space-y-1">
+              <p><b>Customer:</b> {selectedOrderDetails.customerName}</p>
+              <p><b>Delivery Date:</b> {selectedOrderDetails.deliveryDate}</p>
+              <p><b>Item Code:</b> {selectedOrderDetails.itemCode}</p>
+              <p><b>Total Price:</b> ₹{selectedOrderDetails.price}</p>
+              <p><b>Advance Paid:</b> ₹{selectedOrderDetails.advance}</p>
+              <p><b>Material Cost:</b> ₹{selectedOrderDetails.materialCost}</p>
+              <p><b>Delivery Charge:</b> ₹{selectedOrderDetails.deliveryCharge}</p>
+              <p><b>Tailor:</b> {selectedOrderDetails.tailor}</p>
+              <p><b>Stitching Fee:</b> ₹{selectedOrderDetails.stitchingCost}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#083C35] border-t border-[#0d5249] p-3 flex justify-around items-center max-w-md mx-auto">
+        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center text-[10px] ${activeTab === 'dashboard' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
+          <Home size={18} /> Dashboard
+        </button>
+        <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center text-[10px] ${activeTab === 'orders' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
+          <ShoppingBag size={18} /> Orders
+        </button>
+        <button onClick={() => setActiveTab('customers')} className={`flex flex-col items-center text-[10px] ${activeTab === 'customers' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
+          <Users size={18} /> History
+        </button>
+        <button onClick={() => setActiveTab('store')} className={`flex flex-col items-center text-[10px] ${activeTab === 'store' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
+          <ImageIcon size={18} /> Store
+        </button>
+        <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center text-[10px] ${activeTab === 'analytics' ? 'text-[#C0EB6A]' : 'text-gray-400'}`}>
+          <BarChart2 size={18} /> Analytics
+        </button>
+      </div>
+    </div>
+  );
+}
